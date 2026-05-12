@@ -38,13 +38,33 @@ app.post('/register', async (req, res) => {
     }
 
     try {
-        // 1. Encriptar la contraseña (10 es el costo computacional estándar)
         const hashPassword = await bcrypt.hash(password, 10);
 
-        // 2. Guardar en la base de datos con el hash
         const [resultado] = await db.query(
             'INSERT INTO Usuarios (nombre, email, password, estado) VALUES (?, ?, ?, ?)',
             [nombre, email, hashPassword, 1]
+        );
+
+        res.status(201).json({ message: "Usuario registrado con éxito" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Error al registrar el usuario" });
+    }
+});
+
+app.post('/register_admin', async (req, res) => {
+    const { nombre, email, password } = req.body;
+
+    if (!nombre || !email || !password) {
+        return res.status(400).json({ error: "Todos los campos son obligatorios" });
+    }
+
+    try {
+        const hashPassword = await bcrypt.hash(password, 10);
+
+        const [resultado] = await db.query(
+            'INSERT INTO admin (nombre, email, password) VALUES (?, ?, ?)',
+            [nombre, email, hashPassword]
         );
 
         res.status(201).json({ message: "Usuario registrado con éxito" });
