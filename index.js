@@ -17,7 +17,6 @@ app.get('/', (req, res) => {
 
 app.get('/test-db', async (req, res) => {
     try {
-   
         const [rows] = await db.query('SELECT 1 + 1 AS resultado');
         res.json({ message: "¡Conexión exitosa a la base de datos!", rows });
     } catch (error) {
@@ -25,9 +24,14 @@ app.get('/test-db', async (req, res) => {
         res.status(500).json({ error: "Fallo la conexión a MySQL" });
     }
 });
-
-app.listen(PORT, () => {
-    console.log(`Backend escuchando en http://localhost:${PORT}`);
+app.get('/users', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT id_usuario, nombre, email, estado FROM Usuarios');
+        res.json(rows);
+    } catch (error) {
+        console.error("Error al obtener usuarios:", error);
+        res.status(500).json({ error: "Error al consultar la base de datos" });
+    }
 });
 
 app.post('/register', async (req, res) => {
@@ -40,15 +44,18 @@ app.post('/register', async (req, res) => {
     try {
         const hashPassword = await bcrypt.hash(password, 10);
 
-        const [resultado] = await db.query(
+        await db.query(
             'INSERT INTO Usuarios (nombre, email, password, estado) VALUES (?, ?, ?, ?)',
             [nombre, email, hashPassword, 1]
         );
 
-        res.status(201).json({ message: "Usuario registrado con éxito" });
+        return res.status(201).json({ message: "Usuario registrado con éxito" });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "Error al registrar el usuario" });
+        if (error.errno === 1062) {
+            return res.status(400).json({ error: "El correo ya está registrado como atleta." });
+        }
+        return res.status(500).json({ error: "Error al registrar el usuario" });
     }
 });
 
@@ -62,15 +69,18 @@ app.post('/register_admin', async (req, res) => {
     try {
         const hashPassword = await bcrypt.hash(password, 10);
 
-        const [resultado] = await db.query(
+        await db.query(
             'INSERT INTO admin (nombre, email, password) VALUES (?, ?, ?)',
             [nombre, email, hashPassword]
         );
 
-        res.status(201).json({ message: "Usuario registrado con éxito" });
+        return res.status(201).json({ message: "Admin registrado con éxito" });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "Error al registrar el usuario" });
+        if (error.errno === 1062) {
+            return res.status(400).json({ error: "El correo ya pertenece a un administrador." });
+        }
+        return res.status(500).json({ error: "Error al registrar el administrador" });
     }
 });
 
@@ -79,35 +89,30 @@ app.post('/login', async (req, res) => {
 
     try {
         const [rows] = await db.query('SELECT * FROM Usuarios WHERE email = ?', [email]);
-        
         if (rows.length === 0) {
             return res.status(404).json({ error: "Usuario no encontrado" });
         }
-
         const usuario = rows[0];
         const passwordValido = await bcrypt.compare(password, usuario.password);
 
         if (!passwordValido) {
             return res.status(401).json({ error: "Contraseña incorrecta" });
         }
-
         const token = jwt.sign(
             { id: usuario.id_usuario, nombre: usuario.nombre }, 
             'clave_secreta', 
             { expiresIn: '2h' }
         );
-
-        res.json({ 
+        return res.json({ 
             message: "¡Bienvenido arrebatado!", 
-            token: token 
+            token: token,
+            user: { id: usuario.id_usuario, nombre: usuario.nombre, email: usuario.email }
         });
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "Error interno del servidor" });
+        return res.status(500).json({ error: "Error interno del servidor" });
     }
-
-    
 });
 
 app.post('/login_admin', async (req, res) => {
@@ -117,31 +122,30 @@ app.post('/login_admin', async (req, res) => {
         const [rows] = await db.query('SELECT * FROM admin WHERE email = ?', [email]);
         
         if (rows.length === 0) {
-            return res.status(404).json({ error: "Usuario no encontrado" });
+            return res.status(404).json({ error: "Administrador no encontrado" });
         }
-
         const usuario = rows[0];
         const passwordValido = await bcrypt.compare(password, usuario.password);
-
         if (!passwordValido) {
             return res.status(401).json({ error: "Contraseña incorrecta" });
         }
-
         const token = jwt.sign(
-            { id: usuario.id_usuario, nombre: usuario.nombre }, 
+            { id: usuario.id_admin, nombre: usuario.nombre, rol: 'admin' }, 
             'clave_secreta', 
             { expiresIn: '2h' }
         );
-
-        res.json({ 
-            message: "¡Bienvenido arrebatado!", 
-            token: token 
+        return res.json({ 
+            message: "¡Bienvenido Modo Dios!", 
+            token: token,
+            user: { id: usuario.id_admin, nombre: usuario.nombre, email: usuario.email, rol: 'admin' }
         });
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "Error interno del servidor" });
+        return res.status(500).json({ error: "Error interno del servidor" });
     }
+});
 
-    
+app.listen(PORT, () => {
+    console.log(`Backend escuchando en http://localhost:${PORT}`);
 });
