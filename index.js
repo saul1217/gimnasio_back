@@ -106,4 +106,42 @@ app.post('/login', async (req, res) => {
         console.error(error);
         res.status(500).json({ error: "Error interno del servidor" });
     }
+
+    
+});
+
+app.post('/login_admin', async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        const [rows] = await db.query('SELECT * FROM admin WHERE email = ?', [email]);
+        
+        if (rows.length === 0) {
+            return res.status(404).json({ error: "Usuario no encontrado" });
+        }
+
+        const usuario = rows[0];
+        const passwordValido = await bcrypt.compare(password, usuario.password);
+
+        if (!passwordValido) {
+            return res.status(401).json({ error: "Contraseña incorrecta" });
+        }
+
+        const token = jwt.sign(
+            { id: usuario.id_usuario, nombre: usuario.nombre }, 
+            'clave_secreta', 
+            { expiresIn: '2h' }
+        );
+
+        res.json({ 
+            message: "¡Bienvenido arrebatado!", 
+            token: token 
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Error interno del servidor" });
+    }
+
+    
 });
