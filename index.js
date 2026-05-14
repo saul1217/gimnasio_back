@@ -154,6 +154,57 @@ app.get('/rutinas', async (req, res) => {
         res.status(500).json({ error: "Error al consultar las rutinas" });
     }
 });
+``
+
+app.get('/rutina/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [rutinas] = await db.query('SELECT * FROM rutina WHERE id_rutina = ?', [id]);
+        
+        if (rutinas.length === 0) {
+            return res.status(404).json({ error: "La rutina solicitada no existe" });
+        }
+
+        const rutinaInfo = rutinas[0];
+
+        const queryDetalles = `
+            SELECT 
+                rd.id_detalle,
+                rd.series,
+                rd.repeticiones,
+                rd.tiempo_descanso,
+                rd.dia_semana,
+                e.id_ejercicio,
+                e.nombre AS nombre_ejercicio,
+                e.grupo_muscular,
+                e.descripcion
+            FROM rutina_detalles rd
+            INNER JOIN ejercicios e ON rd.ejercicios_id_ejercicio = e.id_ejercicio
+            WHERE rd.rutina_id_rutina = ?
+            ORDER BY rd.dia_semana ASC, rd.id_detalle ASC
+        `;
+
+        const [ejercicios] = await db.query(queryDetalles, [id]);
+
+        return res.json({
+            id_rutina: rutinaInfo.id_rutina,
+            nombre_rutina: rutinaInfo.nombre_rutina,
+            objetivo: rutinaInfo.objetivo,
+            total_ejercicios: ejercicios.length,
+            ejercicios: ejercicios 
+        });
+
+    } catch (error) {
+        console.error("Error al consultar el detalle de la rutina:", error);
+        return res.status(500).json({ error: "Error interno al obtener los detalles de la rutina" });
+    }
+});
+
+export const getDetalleRutinaRequest = async (id_rutina) => {
+    const response = await api.get(`/rutina/${id_rutina}`);
+    return response.data;
+};
 
 app.listen(PORT, () => {
     console.log(`Backend escuchando en http://localhost:${PORT}`);
