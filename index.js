@@ -146,6 +146,15 @@ app.post('/login_admin', async (req, res) => {
     }
 });
 
+app.get('/rutinas', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM rutina');
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: "Error al consultar las rutinas" });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Backend escuchando en http://localhost:${PORT}`);
 });
