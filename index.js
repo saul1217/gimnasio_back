@@ -201,10 +201,43 @@ app.get('/rutina/:id', async (req, res) => {
     }
 });
 
-export const getDetalleRutinaRequest = async (id_rutina) => {
-    const response = await api.get(`/rutina/${id_rutina}`);
-    return response.data;
-};
+app.get('/ejercicios', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM ejercicios ORDER BY grupo_muscular ASC, nombre ASC');
+        res.json(rows);
+    } catch (error) {
+        console.error("Error al obtener ejercicios:", error);
+        res.status(500).json({ error: "Error al consultar los ejercicios" });
+    }
+});
+
+app.post('/rutina', async (req, res) => {
+    const { nombre_rutina, objetivo, ejercicios } = req.body;
+
+    if (!nombre_rutina || !ejercicios || ejercicios.length === 0) {
+        return res.status(400).json({ error: "Faltan datos o ejercicios para la rutina" });
+    }
+
+    try {
+        const [resultRutina] = await db.query(
+            'INSERT INTO rutina (nombre_rutina, objetivo) VALUES (?, ?)',
+            [nombre_rutina, objetivo]
+        );
+        const idRutinaNueva = resultRutina.insertId;
+
+        for (const ej of ejercicios) {
+            await db.query(
+                'INSERT INTO rutina_detalles (rutina_id_rutina, ejercicios_id_ejercicio, series, repeticiones, tiempo_descanso, dia_semana) VALUES (?, ?, ?, ?, ?, ?)',
+                [idRutinaNueva, ej.id_ejercicio, ej.series, ej.repeticiones, ej.tiempo_descanso, 1] 
+            );
+        }
+
+        return res.status(201).json({ message: "Rutina creada con éxito" });
+    } catch (error) {
+        console.error("Error al crear la rutina:", error);
+        return res.status(500).json({ error: "Error interno al guardar la rutina en la base de datos" });
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`Backend escuchando en http://localhost:${PORT}`);
