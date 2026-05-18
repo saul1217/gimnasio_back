@@ -239,6 +239,47 @@ app.post('/rutina', async (req, res) => {
     }
 });
 
+app.delete('/rutina/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [result] = await db.query('DELETE FROM rutina WHERE id_rutina = ?', [id]);
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "Rutina no encontrada" });
+        }
+        
+        return res.json({ message: "Rutina eliminada correctamente" });
+    } catch (error) {
+        console.error("Error al eliminar la rutina:", error);
+        return res.status(500).json({ error: "Error interno al eliminar la rutina" });
+    }
+});
+
+app.put('/rutina/:id', async (req, res) => {
+    const { id } = req.params;
+    const { nombre_rutina, objetivo, ejercicios } = req.body;
+    if (!nombre_rutina || !ejercicios || ejercicios.length === 0) {
+        return res.status(400).json({ error: "Faltan datos o ejercicios" });
+    }
+    try {
+        await db.query(
+            'UPDATE rutina SET nombre_rutina = ?, objetivo = ? WHERE id_rutina = ?',
+            [nombre_rutina, objetivo, id]
+        );
+        await db.query('DELETE FROM rutina_detalles WHERE rutina_id_rutina = ?', [id]);
+        for (const ej of ejercicios) {
+            await db.query(
+                'INSERT INTO rutina_detalles (rutina_id_rutina, ejercicios_id_ejercicio, series, repeticiones, tiempo_descanso, dia_semana) VALUES (?, ?, ?, ?, ?, ?)',
+                [id, ej.id_ejercicio, ej.series, ej.repeticiones, ej.tiempo_descanso, 1]
+            );
+        }
+        return res.json({ message: "Rutina actualizada con éxito" });
+    } catch (error) {
+        console.error("Error al actualizar la rutina:", error);
+        return res.status(500).json({ error: "Error interno al actualizar la rutina" });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Backend escuchando en http://localhost:${PORT}`);
 });
