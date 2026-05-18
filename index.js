@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const db = require('./config/db'); 
+const db = require('.   config/db'); 
 
 const app = express();
 
@@ -277,6 +277,25 @@ app.put('/rutina/:id', async (req, res) => {
     } catch (error) {
         console.error("Error al actualizar la rutina:", error);
         return res.status(500).json({ error: "Error interno al actualizar la rutina" });
+    }
+});
+
+app.post('/ejercicios', async (req, res) => {
+    const { nombre, grupo_muscular, descripcion } = req.body;
+
+    if (!nombre || !grupo_muscular) {
+        return res.status(400).json({ error: "Nombre y grupo muscular son obligatorios" });
+    }
+
+    try {
+        await db.query(
+            'INSERT INTO ejercicios (nombre, grupo_muscular, descripcion) VALUES (?, ?, ?)',
+            [nombre, grupo_muscular, descripcion]
+        );
+        res.status(201).json({ message: "Ejercicio creado con éxito" });
+    } catch (error) {
+        console.error("Error al crear ejercicio:", error);
+        res.status(500).json({ error: "Error al guardar el ejercicio" });
     }
 });
 
