@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const db = require('.   config/db'); 
+const db = require('./config/db'); 
 
 const app = express();
 
@@ -298,6 +298,30 @@ app.post('/ejercicios', async (req, res) => {
         res.status(500).json({ error: "Error al guardar el ejercicio" });
     }
 });
+
+app.post('/asignar-rutina', async (req, res) => {
+    const { id_usuario, id_rutina } = req.body;
+
+    if (!id_usuario || !id_rutina) {
+        return res.status(400).json({ error: "Faltan datos para la asignación" });
+    }
+
+    try {
+        await db.query('DELETE FROM asignacion WHERE Usuarios_id_usuario = ?', [id_usuario]);
+
+        await db.query(
+            'INSERT INTO asignacion (Usuarios_id_usuario, rutina_id_rutina) VALUES (?, ?)',
+            [id_usuario, id_rutina]
+        );
+
+        return res.status(200).json({ message: "Rutina asignada exitosamente al atleta" });
+    } catch (error) {
+        console.error("Error al asignar rutina:", error);
+        return res.status(500).json({ error: "Error interno al asignar la rutina" });
+    }
+});
+
+
 
 app.listen(PORT, () => {
     console.log(`Backend escuchando en http://localhost:${PORT}`);
